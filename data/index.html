@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESP32 Robot</title>
+    <style>
+        :root {
+            --bg-1: #070311;
+            --bg-2: #120a2b;
+            --bg-3: #1b1241;
+            --panel: rgba(10, 8, 22, 0.82);
+            --line: rgba(255, 53, 170, 0.35);
+            --text: #f6ecff;
+            --muted: #b89ed9;
+            --accent: #22f0ff;
+            --accent-2: #ff2ea6;
+            --danger: #ff5a7a;
+            --danger-2: #ff2f57;
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            position: relative;
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Verdana", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1000px 700px at 20% -10%, rgba(255, 46, 166, 0.22), transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, rgba(34, 240, 255, 0.18), transparent 60%),
+                linear-gradient(170deg, var(--bg-1), var(--bg-2) 45%, var(--bg-3));
+            padding: 12px;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0.03) 0,
+                    rgba(255, 255, 255, 0.03) 1px,
+                    transparent 1px,
+                    transparent 4px);
+            mix-blend-mode: soft-light;
+            opacity: 0.45;
+        }
+
+        .app {
+            width: min(100%, 560px);
+            margin: 0 auto;
+            display: grid;
+            gap: 12px;
+        }
+
+        .title {
+            margin: 8px 6px 0;
+            font-size: 1.2rem;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            text-transform: uppercase;
+            text-shadow:
+                0 0 8px rgba(255, 46, 166, 0.45),
+                0 0 16px rgba(34, 240, 255, 0.35);
+        }
+
+        .video-wrap {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #000;
+            box-shadow:
+                0 0 0 1px rgba(34, 240, 255, 0.25),
+                0 0 18px rgba(34, 240, 255, 0.2),
+                0 0 34px rgba(255, 46, 166, 0.22);
+        }
+
+        #stream {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+        }
+
+        .controls {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 14px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 18px rgba(255, 46, 166, 0.18);
+        }
+
+        .pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 14px;
+            min-height: 64px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #140324;
+            background: linear-gradient(180deg, var(--accent), #53d9ff 50%, #9feeff);
+            box-shadow:
+                0 0 0 1px rgba(34, 240, 255, 0.45),
+                0 7px 16px rgba(0, 0, 0, 0.4),
+                0 0 16px rgba(34, 240, 255, 0.35);
+            touch-action: manipulation;
+            transition: transform 120ms ease, box-shadow 160ms ease;
+        }
+
+        .btn:hover {
+            box-shadow:
+                0 0 0 1px rgba(34, 240, 255, 0.7),
+                0 9px 20px rgba(0, 0, 0, 0.45),
+                0 0 24px rgba(34, 240, 255, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
+        .stop {
+            background: linear-gradient(180deg, #ff8aa0, var(--danger), var(--danger-2));
+            color: #fff;
+            box-shadow:
+                0 0 0 1px rgba(255, 90, 122, 0.65),
+                0 7px 16px rgba(0, 0, 0, 0.4),
+                0 0 18px rgba(255, 90, 122, 0.5);
+        }
+
+        .light {
+            background: linear-gradient(180deg, #ffe480, #ffb84d 55%, #ff8f34);
+            color: #3b1600;
+            box-shadow:
+                0 0 0 1px rgba(255, 188, 88, 0.72),
+                0 7px 16px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(255, 194, 104, 0.55);
+        }
+
+        .empty {
+            visibility: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="app">
+        <h2 class="title">ESP32 Robot</h2>
+        <section class="video-wrap">
+            <img id="stream" src="/stream" alt="Camera stream">
+        </section>
+
+        <section class="controls">
+            <div class="pad">
+                <button class="btn empty" aria-hidden="true" tabindex="-1">.</button>
+                <button class="btn" onclick="send('forward')">Forward</button>
+                <button class="btn light" onclick="send('light')" aria-label="Toggle light">💡</button>
+
+                <button class="btn" onclick="send('left')">Left</button>
+                <button class="btn stop" onclick="send('stop')">Stop</button>
+                <button class="btn" onclick="send('right')">Right</button>
+
+                <button class="btn empty" aria-hidden="true" tabindex="-1">.</button>
+                <button class="btn" onclick="send('back')">Back</button>
+                <button class="btn empty" aria-hidden="true" tabindex="-1">.</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let ws;
+
+        function connectWS() {
+            ws = new WebSocket("ws://" + location.host + "/ws");
+            ws.onopen = () => console.log("WS connected");
+            ws.onclose = () => {
+                console.log("WS closed, reconnecting...");
+                setTimeout(connectWS, 1000);
+            };
+        }
+
+        function send(cmd) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(cmd);
+            }
+        }
+
+        connectWS();
+    </script>
+</body>
+
+</html>
