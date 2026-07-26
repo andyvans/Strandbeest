@@ -2,7 +2,6 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
-#include <Ticker.h>
 #include "motor_control.h"
 #include "constants.h"
 
@@ -11,12 +10,12 @@ AsyncWebSocket ws("/ws");
 
 namespace {
 
-    Ticker ledOffTimer;
     constexpr int kLedPwmMaxDuty = (1 << constants::BOARD_LED_PWM_RESOLUTION_BITS) - 1;
     bool lightEnabled = false;
 
     void writeBoardLedDuty(int duty) {
-        ledcWrite(constants::BOARD_LED_PWM_CHANNEL, kLedPwmMaxDuty - duty);
+        const int outputDuty = constants::BOARD_LED_ACTIVE_LOW ? (kLedPwmMaxDuty - duty) : duty;
+        ledcWrite(constants::BOARD_LED_PWM_CHANNEL, outputDuty);
     }
 
     void applyBoardLedState() {
@@ -26,19 +25,6 @@ namespace {
         else {
             writeBoardLedDuty(0);
         }
-    }
-
-    void turnBoardLedOff() {
-        applyBoardLedState();
-    }
-
-    void flashBoardLed() {
-        if (lightEnabled) {
-            return;
-        }
-        writeBoardLedDuty(constants::BOARD_LED_FLASH_DUTY);
-        ledOffTimer.detach();
-        ledOffTimer.once_ms(40, turnBoardLedOff);
     }
 
 } // namespace
@@ -52,8 +38,6 @@ void handleWSMessage(void* arg, uint8_t* data, size_t len) {
         Serial.printf("[LIGHT] %s\n", lightEnabled ? "on" : "off");
         return;
     }
-
-    flashBoardLed();
 
     if (cmd == "forward") driveForward();
     else if (cmd == "back") driveBackward();
@@ -74,7 +58,7 @@ void setupWebServer() {
         constants::BOARD_LED_PWM_RESOLUTION_BITS
     );
     ledcAttachPin(constants::BOARD_LED_PIN, constants::BOARD_LED_PWM_CHANNEL);
-    turnBoardLedOff();
+    applyBoardLedState();
 
     ws.onEvent([](AsyncWebSocket* server, AsyncWebSocketClient* client,
         AwsEventType type, void* arg, uint8_t* data, size_t len) {

@@ -3,10 +3,10 @@
 namespace constants {
 
     constexpr int BOARD_LED_PIN = 4;
+    constexpr bool BOARD_LED_ACTIVE_LOW = false;
     constexpr int BOARD_LED_PWM_CHANNEL = 0;
     constexpr int BOARD_LED_PWM_FREQUENCY = 5000;
     constexpr int BOARD_LED_PWM_RESOLUTION_BITS = 8;
-    constexpr int BOARD_LED_FLASH_DUTY = 24;
 
     constexpr int MOTOR_IN1_PIN = 12;
     constexpr int MOTOR_IN2_PIN = 13;
