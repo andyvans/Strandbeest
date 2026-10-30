@@ -3,6 +3,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <cstring>
+#include <cstdio>
 #include "constants.h"
 
 extern AsyncWebServer server;
@@ -10,6 +11,7 @@ extern AsyncWebServer server;
 namespace {
 
     const char kMjpegTrailer[] = "\r\n";
+    constexpr size_t kMjpegHeaderMaxLen = 96;
 
     class MjpegStreamResponse : public AsyncAbstractResponse {
     public:
@@ -47,16 +49,25 @@ namespace {
                         return written > 0 ? written : RESPONSE_TRY_AGAIN;
                     }
 
-                    header_ = "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + String(fb_->len) + "\r\n\r\n";
+                    headerLen_ = std::snprintf(
+                        header_,
+                        sizeof(header_),
+                        "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n",
+                        static_cast<unsigned int>(fb_->len));
+                    if (headerLen_ <= 0) {
+                        esp_camera_fb_return(fb_);
+                        fb_ = nullptr;
+                        return written > 0 ? written : RESPONSE_TRY_AGAIN;
+                    }
                     headerIndex_ = 0;
                     frameIndex_ = 0;
                     trailerIndex_ = 0;
                 }
 
-                if (headerIndex_ < header_.length()) {
-                    const size_t headerRemaining = header_.length() - headerIndex_;
+                if (headerIndex_ < static_cast<size_t>(headerLen_)) {
+                    const size_t headerRemaining = static_cast<size_t>(headerLen_) - headerIndex_;
                     const size_t toCopy = std::min(maxLen - written, headerRemaining);
-                    std::memcpy(buf + written, header_.c_str() + headerIndex_, toCopy);
+                    std::memcpy(buf + written, header_ + headerIndex_, toCopy);
                     written += toCopy;
                     headerIndex_ += toCopy;
                     continue;
@@ -89,7 +100,8 @@ namespace {
 
     private:
         camera_fb_t* fb_ = nullptr;
-        String header_;
+        char header_[kMjpegHeaderMaxLen] = {};
+        int headerLen_ = 0;
         size_t headerIndex_ = 0;
         size_t frameIndex_ = 0;
         size_t trailerIndex_ = 0;
@@ -121,8 +133,14 @@ void setupCamera() {
     config.pixel_format = PIXFORMAT_JPEG;
 
     config.frame_size = FRAMESIZE_QVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 2;
+    config.jpeg_quality = 18;
+    config.fb_count = 3;
+#if defined(CAMERA_GRAB_LATEST)
+    config.grab_mode = CAMERA_GRAB_LATEST;
+#endif
+#if defined(CAMERA_FB_IN_PSRAM)
+    config.fb_location = CAMERA_FB_IN_PSRAM;
+#endif
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
