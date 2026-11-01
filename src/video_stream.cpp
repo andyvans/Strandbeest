@@ -110,7 +110,7 @@ namespace {
 } // namespace
 
 void setupCamera() {
-    camera_config_t config;
+    camera_config_t config = {};
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
     config.pin_d0 = constants::CAM_PIN_D0;
@@ -135,12 +135,8 @@ void setupCamera() {
     config.frame_size = FRAMESIZE_QVGA;
     config.jpeg_quality = 18;
     config.fb_count = 3;
-#if defined(CAMERA_GRAB_LATEST)
     config.grab_mode = CAMERA_GRAB_LATEST;
-#endif
-#if defined(CAMERA_FB_IN_PSRAM)
     config.fb_location = CAMERA_FB_IN_PSRAM;
-#endif
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {

@@ -8,9 +8,11 @@ void setup() {
     Serial.begin(115200);
     delay(500);
 
+    // Drive motor pins LOW before WiFi starts so boot-time pin glitches can't spin the motors
+    setupMotors();
+    stopMotors();
     setupWiFiAP();
     setupCamera();
-    setupMotors();
     setupWebServer();
 
     Serial.println("Robot ready. Connect to WiFi: ESP32_Robot");

@@ -10,21 +10,11 @@ AsyncWebSocket ws("/ws");
 
 namespace {
 
-    constexpr int kLedPwmMaxDuty = (1 << constants::BOARD_LED_PWM_RESOLUTION_BITS) - 1;
     bool lightEnabled = false;
 
-    void writeBoardLedDuty(int duty) {
-        const int outputDuty = constants::BOARD_LED_ACTIVE_LOW ? (kLedPwmMaxDuty - duty) : duty;
-        ledcWrite(constants::BOARD_LED_PWM_CHANNEL, outputDuty);
-    }
-
     void applyBoardLedState() {
-        if (lightEnabled) {
-            writeBoardLedDuty(kLedPwmMaxDuty);
-        }
-        else {
-            writeBoardLedDuty(0);
-        }
+        const bool level = lightEnabled != constants::BOARD_LED_ACTIVE_LOW;
+        digitalWrite(constants::BOARD_LED_PIN, level ? HIGH : LOW);
     }
 
 } // namespace
@@ -52,12 +42,7 @@ void setupWebServer() {
         return;
     }
 
-    ledcSetup(
-        constants::BOARD_LED_PWM_CHANNEL,
-        constants::BOARD_LED_PWM_FREQUENCY,
-        constants::BOARD_LED_PWM_RESOLUTION_BITS
-    );
-    ledcAttachPin(constants::BOARD_LED_PIN, constants::BOARD_LED_PWM_CHANNEL);
+    pinMode(constants::BOARD_LED_PIN, OUTPUT);
     applyBoardLedState();
 
     ws.onEvent([](AsyncWebSocket* server, AsyncWebSocketClient* client,
